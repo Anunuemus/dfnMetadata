@@ -1,4 +1,3 @@
-const http = require('http');
 const https = require('https');
 const {HttpsProxyAgent} = require('https-proxy-agent');
 const { DOMParser } = require('xmldom');
@@ -13,6 +12,10 @@ function writeFiles(match, jsonString, certStr, pubKeyStr){
     const hash = createHash('sha256');    
     hash.update(jsonString, 'utf8');
     const digest = hash.digest('hex');
+
+    if(!fs.existsSync('SPs')){
+        fs.mkdirSync('SPs');
+    }
 
     let fileames = fs.readdirSync('SPs');
     let file = fileames.find(file => file.includes(match.name));    
@@ -268,21 +271,21 @@ function getMetadata(){
     const spMetadataUrl = json.spMetadataUrl;
 
     const sp = json.sp;
-    createJSON(sp);
+    // createJSON(sp);
 
-    // const agent = new HttpsProxyAgent('http://webproxy.bs.ptb.de:8080');
-    // const req = http.get(spMetadataUrl, {agent},  (res) => {
-    //     const fileStream = fs.createWriteStream('metadata.xml');  
+    const agent = new HttpsProxyAgent('http://webproxy.bs.ptb.de:8080');
+    const req = https.get(spMetadataUrl, {agent},  (res) => {
+        const fileStream = fs.createWriteStream('metadata.xml');  
     
-    //     res.pipe(fileStream);
+        res.pipe(fileStream);
     
-    //     fileStream.on('finish', () => {
-    //         createJSON(sp);
-    //     });
-    // });
+        fileStream.on('finish', () => {
+            createJSON(sp);
+        });
+    });
 
-    // req.on('error', (err) => console.error('Error:', err));
-    // req.end();
+    req.on('error', (err) => console.error('Error:', err));
+    req.end();
 }
 
 getMetadata();
