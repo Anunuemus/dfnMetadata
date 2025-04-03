@@ -1,2 +1,2 @@
 # DFNMetadata
-this is a test
+A script that fetches DFN SP Metadata XML and 
