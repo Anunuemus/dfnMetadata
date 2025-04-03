@@ -1,5 +1,5 @@
 # DFNMetadata
-A script that fetches DFN SP Metadata XML and retrieves metadata of the SPs as provided in config.json.
+A script that fetches DFN SP Metadata XML and retrieves metadata of the SPs as provided in config.json. \n
 Creates a JSON-file (s. template.json), .crt and .pub for each SP respectively.
 
 ## Installation
