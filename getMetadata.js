@@ -105,9 +105,6 @@ function getCertificate(descriptor) {
         
         const c2 = `-----BEGIN CERTIFICATE-----\n${body[1].textContent}\n-----END CERTIFICATE-----`;
         const cert2 = new crypto.X509Certificate(c2);
-
-        // console.log(cert1.validTo + '-' + cert2.validTo);
-        // console.log(cert1.validToDate > cert2.validToDate ? 'cert1' : 'cert2');
         
         const ret =  cert1.validToDate > cert2.validToDate ? cert1 : cert2;
         
@@ -192,7 +189,7 @@ async function createJSON(json, webproxy) {
 
     const entities = xmlDoc.getElementsByTagName('EntityDescriptor');
 
-    //validateSig(xmlDoc, xmlString);
+    validateSig(xmlDoc, xmlString);
 
     for (let i = 0; i < entities.length; i++) {
 
@@ -271,8 +268,6 @@ function getMetadata(){
     const json = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
     const spMetadataUrl = json.spMetadataUrl;
-
-    // createJSON(sp);
 
     const webproxy = json.webproxy.toString();
 
