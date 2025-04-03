@@ -16,4 +16,5 @@ node ./getMetadata.js
 
 ## Notes
 The `name` attribute in config should not contain `-`, otherwise the `deleteFiles` function will not work properly.
+
 The `getCertificate` will probably not work properly on SPs with several certificates with different KeyNames or seperate certiicates for encryption and signing.
