@@ -1,0 +1,37 @@
+{
+  "appl": "your_SP",
+  "issuer": "https://your.SP.url",
+  "url": "your_url",
+  "logoUrl": "data:image/png;base64,you_image_base64",
+  "protection_requirements": "normal",
+  "users": [],
+  "saml_ecp": {
+    "allowed": false,
+    "service_accounts": [],
+    "allowed_user": false
+  },
+  "groups": [],
+  "preferredAuthnContext": "urn:oasis:names:tc:SAML:2.0:ac: classes:Kerberos",
+  "preferredNameidFormat": "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
+  "singleLogoutService": "",
+  "logoutResponseUrl": "",
+  "assertionConsumerService": "",
+  "sendErrorResponse": true,
+  "visible": true,
+  "secure": false,
+  "cert": "./SPs/your-file.name.crt",
+  "pub": "./SPs/your-file.name.pub",
+  "oidcClient": {
+    "client_id": "",
+    "client_secret": "",
+    "redirect_uris": [],
+    "post_logout_redirect_uris": [],
+    "backchannel_logout_uri": "",
+    "backchannel_logout_session_required": true,
+    "response_types": [],
+    "grant_types": [],
+    "token_endpoint_auth_method": "",
+    "id_token_signed_response_alg": "",
+    "pkce": true
+  }
+}

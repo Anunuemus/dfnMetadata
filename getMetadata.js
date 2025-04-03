@@ -233,7 +233,7 @@ async function createJSON(json, webproxy) {
                 visible: true,
                 secure: false,
                 cert: `./SPs/${match.name + '-' + certFileName}.crt`,
-                pub: `./SPs/${match.name + '-' + certFileName}-dummy.pub`,
+                pub: `./SPs/${match.name + '-' + certFileName}.pub`,
                 oidcClient: {
                     client_id: "",
                     client_secret: "",
