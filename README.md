@@ -1,2 +1,2 @@
-# test
-test repo
+# DFNMetadata
+A script that fetches DFN SP Metadata XML and 
