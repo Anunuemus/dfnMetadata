@@ -1,0 +1,14 @@
+{
+    "sp" : 
+    [
+        {
+            "entityID" : "https://testsp3.aai.dfn.de/shibboleth",
+            "name" : "testsp3"
+        },
+        {
+            "entityID" : "https://my.conf.dfn.de/shibboleth",
+            "name" : "dfn_conf"
+        }
+    ],
+    "spMetadataUrl" : "https://www.aai.dfn.de/metadata/dfn-aai-sp-metadata.xml"
+}
