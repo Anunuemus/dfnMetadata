@@ -7,7 +7,7 @@ const { createHash } = require('crypto');
 const { SignedXml } = require('xml-crypto');
 const path = require('path');
 
-function writeFiles(match, jsonString, certStr, pubKeyStr){
+function writeFiles(match, jsonString, certStr, pubKeyStr, certFileName){
 
     const hash = createHash('sha256');    
     hash.update(jsonString, 'utf8');
@@ -29,22 +29,22 @@ function writeFiles(match, jsonString, certStr, pubKeyStr){
 
             fs.renameSync('SPs/'.concat(file), `SPs/${name}-metadata.json`);
         
-            fs.writeFileSync(`SPs/${match.name}-sp-e.bs.ptb.de.crt`, certStr);
+            fs.writeFileSync(`SPs/${match.name + '-' + certFileName}.crt`, certStr);
         
-            fs.writeFileSync(`SPs/${match.name}-sp-e.bs.ptb.de.pub`, pubKeyStr);
+            fs.writeFileSync(`SPs/${match.name + '-' + certFileName}.pub`, pubKeyStr);
         }
 
     }else{
 
         fs.writeFileSync(`SPs/${name}-metadata.json`, jsonString);
-    
-        fs.writeFileSync(`SPs/${match.name}-sp-e.bs.ptb.de.crt`, certStr);
-    
-        fs.writeFileSync(`SPs/${match.name}-sp-e.bs.ptb.de.pub`, pubKeyStr);
+
+        fs.writeFileSync(`SPs/${match.name + '-' + certFileName}.crt`, certStr);
+        
+        fs.writeFileSync(`SPs/${match.name + '-' + certFileName}.pub`, pubKeyStr);
     }
 }
 
-function deleteFiles(names){
+function deleteFiles(names, certFileName){
 
     const EXTENSION = '.json';
 
@@ -62,11 +62,11 @@ function deleteFiles(names){
 
             const fileName = file.toString().split('-')[0];
 
-            fs.unlink(`SPs/${fileName}-sp-e.bs.ptb.de.crt`, (err) => {
+            fs.unlink(`SPs/${fileName + '-' + certFileName}.crt`, (err) => {
                 if (err) console.log(err);
             });
 
-            fs.unlink(`SPs/${fileName}-sp-e.bs.ptb.de.pub`, (err) => {
+            fs.unlink(`SPs/${fileName + '-' + certFileName}.pub`, (err) => {
                 if (err) console.log(err);
             });
         }
@@ -106,7 +106,7 @@ function getCertificate(descriptor) {
         const c2 = `-----BEGIN CERTIFICATE-----\n${body[1].textContent}\n-----END CERTIFICATE-----`;
         const cert2 = new crypto.X509Certificate(c2);
 
-        // console.log(cert1.validTo + ' - ' + cert2.validTo);
+        // console.log(cert1.validTo + '-' + cert2.validTo);
         // console.log(cert1.validToDate > cert2.validToDate ? 'cert1' : 'cert2');
         
         const ret =  cert1.validToDate > cert2.validToDate ? cert1 : cert2;
@@ -128,12 +128,12 @@ function getCertificate(descriptor) {
     return ret;
 }
 
-async function getLogo(descriptor) {
+async function getLogo(descriptor, proxy) {
 
     const logoElement = descriptor.getElementsByTagName('mdui:Logo')[0].textContent;
     
     if(logoElement){    
-        const agent = new HttpsProxyAgent('http://webproxy.bs.ptb.de:8080');
+        const agent = new HttpsProxyAgent(proxy);
         
         return new Promise((resolve, reject) => {
 
@@ -181,7 +181,10 @@ function getRequestedAttributes(descriptor){
     );
 }
 
-async function createJSON(sp) {
+async function createJSON(json, webproxy) {
+
+    const sp = json.sp;
+    const certFileName = json.certFileName;
 
     const xmlString = fs.readFileSync('metadata.xml', 'utf8').toString();
 
@@ -189,7 +192,7 @@ async function createJSON(sp) {
 
     const entities = xmlDoc.getElementsByTagName('EntityDescriptor');
 
-    validateSig(xmlDoc, xmlString);
+    //validateSig(xmlDoc, xmlString);
 
     for (let i = 0; i < entities.length; i++) {
 
@@ -206,7 +209,7 @@ async function createJSON(sp) {
     
             const cert = getCertificate(descriptor);
             const publicKey = cert.publicKey.export({ type: 'spki', format: 'pem' });
-            const logo = await getLogo(descriptor);
+            const logo = await getLogo(descriptor, webproxy);
             const assertionConsumerService = getAssertionConsumerService(descriptor);
             const contacts = getContact(entity);
             const requestedAttributes = getRequestedAttributes(descriptor);
@@ -214,10 +217,10 @@ async function createJSON(sp) {
             const results = {
                 appl: match.name,
                 issuer: match.entityID,
-                url: "https://sp-e.bs.ptb.de:8446",
+                url: "https://dummy.url:port",
                 logoUrl: logo,
                 protection_requirements: "normal",
-                users: [], //müsste man schauen wer da rein soll                
+                users: [],               
                 saml_ecp: {
                     allowed: false,
                     service_accounts: [],
@@ -232,8 +235,8 @@ async function createJSON(sp) {
                 sendErrorResponse: true,
                 visible: true,
                 secure: false,
-                cert: `./SPs/${match.name}-sp-e.bs.ptb.de.crt`,
-                pub: `./SPs/${match.name}-sp-e.bs.ptb.de.pub`,
+                cert: `./SPs/${match.name + '-' + certFileName}.crt`,
+                pub: `./SPs/${match.name + '-' + certFileName}-dummy.pub`,
                 oidcClient: {
                     client_id: "",
                     client_secret: "",
@@ -257,11 +260,10 @@ async function createJSON(sp) {
 
             const jsonString = JSON.stringify(results, null, 2);
 
-            writeFiles(match, jsonString, certStr, pubKeyStr);
+            writeFiles(match, jsonString, certStr, pubKeyStr, certFileName);
         }
     }
-    
-    deleteFiles(sp.map(entry => entry.name));
+    deleteFiles(sp.map(entry => entry.name), certFileName);
 }
 
 function getMetadata(){
@@ -270,17 +272,18 @@ function getMetadata(){
 
     const spMetadataUrl = json.spMetadataUrl;
 
-    const sp = json.sp;
     // createJSON(sp);
 
-    const agent = new HttpsProxyAgent('http://webproxy.bs.ptb.de:8080');
+    const webproxy = json.webproxy.toString();
+
+    const agent = new HttpsProxyAgent(webproxy);
     const req = https.get(spMetadataUrl, {agent},  (res) => {
         const fileStream = fs.createWriteStream('metadata.xml');  
     
         res.pipe(fileStream);
     
         fileStream.on('finish', () => {
-            createJSON(sp);
+            createJSON(json, webproxy);
         });
     });
 

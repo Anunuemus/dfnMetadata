@@ -10,5 +10,7 @@
             "name" : "dfn_conf"
         }
     ],
-    "spMetadataUrl" : "https://www.aai.dfn.de/metadata/dfn-aai-sp-metadata.xml"
+    "spMetadataUrl" : "https://www.aai.dfn.de/metadata/dfn-aai-sp-metadata.xml",
+    "webproxy" : "http://your.web.proxy:port",
+    "certFileName" : "your-file.name"
 }
