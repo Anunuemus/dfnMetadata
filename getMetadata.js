@@ -151,7 +151,7 @@ async function getLogo(descriptor, proxy) {
             });
         });
     }
-    return "";
+    return '';
 }
 
 function getAssertionConsumerService(descriptor){
@@ -176,6 +176,30 @@ function getRequestedAttributes(descriptor){
     ).map(attribute => 
         attribute.getAttribute("FriendlyName")
     );
+}
+
+function goCheck(match, cert, publicKey, logo, assertionConsumerService, contact){
+    let ok = true;
+    if(!cert){
+        console.error(`No certificate found for ${match.name}.`);
+        ok = false;
+    }
+    if(!publicKey || publicKey === ''){
+        console.error(`No public key found for ${match.name}. You probably did something very wrong since this message shouldn't ever show.`);
+        ok = false;
+    }
+    if(logo === ''){
+        console.error(`No logo found for ${match.name}.`);
+        ok = false;
+    }
+    if(!assertionConsumerService){
+        console.error(`No assertion consumer service found for ${match.name}.`);
+        ok = false;
+    }
+    if(!contact){
+        console.error(`No contact information found for ${match.name}. JSON will be created without contact.`);
+    }
+    return ok;
 }
 
 async function createJSON(json, webproxy) {
@@ -205,17 +229,21 @@ async function createJSON(json, webproxy) {
             const descriptor = entity.getElementsByTagName('SPSSODescriptor')[0];
     
             const cert = getCertificate(descriptor);
-            const publicKey = cert.publicKey.export({ type: 'spki', format: 'pem' });
+            const publicKey = cert ? cert.publicKey.export({ type: 'spki', format: 'pem' }) : '';
             const logo = await getLogo(descriptor, webproxy);
             const assertionConsumerService = getAssertionConsumerService(descriptor);
             const contacts = getContact(entity);
             const requestedAttributes = getRequestedAttributes(descriptor);
+
+            if(!goCheck(match, cert, publicKey, logo, assertionConsumerService, contacts)){
+                continue;
+            }
     
             const results = {
                 appl: match.name,
                 issuer: match.entityID,
                 url: "https://dummy.url:port",
-                logoUrl: logo,
+                logo: logo,
                 protection_requirements: "normal",
                 users: [],               
                 saml_ecp: {
@@ -224,16 +252,17 @@ async function createJSON(json, webproxy) {
                     allowed_user: false,
                 },
                 groups: [],
-                preferredAuthnContext: "urn:oasis:names:tc:SAML:2.0:ac: classes:Kerberos",
+                preferredAuthnContext: "urn:oasis:names:tc:SAML:2.0:ac: classes:unspecified",
                 preferredNameidFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
                 singleLogoutService: "",
                 logoutResponseUrl: "",
                 assertionConsumerService: assertionConsumerService,
+                addAttributeValueDefinition : true,
                 sendErrorResponse: true,
                 visible: true,
                 secure: false,
-                cert: `./SPs/${match.name + '-' + certFileName}.crt`,
-                pub: `./SPs/${match.name + '-' + certFileName}.pub`,
+                cert: `${match.name + '-' + certFileName}.crt`,
+                pub: `${match.name + '-' + certFileName}.pub`,
                 oidcClient: {
                     client_id: "",
                     client_secret: "",
@@ -248,8 +277,8 @@ async function createJSON(json, webproxy) {
                     pkce: true
                 },
     
-                //reqAttr: requestedAttributes
-                //contacts : contacts
+                // reqAttr: requestedAttributes,
+                // contacts : contacts
             };
             
             certStr = certStr.concat(cert.toString());
