@@ -3,13 +3,12 @@ const {HttpsProxyAgent} = require('https-proxy-agent');
 const { DOMParser } = require('xmldom');
 const fs = require('fs');
 const crypto = require('crypto');
-const { createHash } = require('crypto');
 const { SignedXml } = require('xml-crypto');
 const path = require('path');
 
 function writeFiles(match, jsonString, certStr, pubKeyStr, certFileName){
 
-    const hash = createHash('sha256');    
+    const hash = crypto.createHash('sha256');    
     hash.update(jsonString, 'utf8');
     const digest = hash.digest('hex');
 
@@ -57,7 +56,7 @@ function deleteFiles(names, certFileName){
         if(!names.some(name => file.includes(name))){
 
             fs.unlink('SPs/'.concat(file), (err) => {
-                if (err) throw err;
+                if (err) console.error(err);
             });
 
             const fileName = file.toString().split('-')[0];
@@ -87,7 +86,7 @@ function validateSig(xmlDoc, xmlString){
     try{
         const isValid = sig.checkSignature(xmlString.concat("test"));
         if(!isValid){
-            throw new Error('Bad Signature or metadata.');
+            console.error('Bad Signature or metadata.');
         }
     }catch (e){
         console.log(e);
@@ -109,7 +108,7 @@ function getCertificate(descriptor) {
         const ret =  cert1.validToDate > cert2.validToDate ? cert1 : cert2;
         
         if(Date.parse(ret.validTo) < new Date().getTime()){
-            throw new Error('Certificate is not valid anymore');
+            console.error('Certificate is not valid anymore');
         }
 
         return ret;
@@ -119,7 +118,7 @@ function getCertificate(descriptor) {
     const ret = new crypto.X509Certificate(certificate);
     
     if(Date.parse(ret.validTo) < new Date().getTime()){
-        throw new Error('Certificate is not valid anymore');
+        console.error('Certificate is not valid anymore');
     }
 
     return ret;
