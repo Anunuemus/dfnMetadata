@@ -86,7 +86,7 @@ function validateSig(xmlDoc, xmlString){
     try{
         const isValid = sig.checkSignature(xmlString.concat("test"));
         if(!isValid){
-            console.error('Bad Signature or metadata.');
+            throw new Error('Bad Signature or metadata.');
         }
     }catch (e){
         console.log(e);
@@ -108,7 +108,8 @@ function getCertificate(descriptor) {
         const ret =  cert1.validToDate > cert2.validToDate ? cert1 : cert2;
         
         if(Date.parse(ret.validTo) < new Date().getTime()){
-            console.error('Certificate is not valid anymore');
+            console.error('Certificate is not valid anymore.');
+            return null;
         }
 
         return ret;
@@ -118,7 +119,8 @@ function getCertificate(descriptor) {
     const ret = new crypto.X509Certificate(certificate);
     
     if(Date.parse(ret.validTo) < new Date().getTime()){
-        console.error('Certificate is not valid anymore');
+        console.error('Certificate is not valid anymore.');
+        return null;
     }
 
     return ret;
@@ -158,6 +160,10 @@ function getAssertionConsumerService(descriptor){
     return body.getAttribute("Location");
 }
 
+function getInfo(descriptor){
+    return descriptor.getElementsByTagName('mdui:InformationURL')[0].textContent;
+}
+
 function getContact(entity){
     const body = entity.getElementsByTagName('ContactPerson');
     return Array.from(body).map(contact => 
@@ -177,13 +183,13 @@ function getRequestedAttributes(descriptor){
     );
 }
 
-function goCheck(match, cert, publicKey, logo, assertionConsumerService, contact){
+function goCheck(match, cert, publicKey, logo, assertionConsumerService, info, contact){
     let ok = true;
     if(!cert){
-        console.error(`No certificate found for ${match.name}.`);
+        console.error(`Invalid or no certificate found for ${match.name}.`);
         ok = false;
     }
-    if(!publicKey || publicKey === ''){
+    if(!publicKey && publicKey !== ''){
         console.error(`No public key found for ${match.name}. You probably did something very wrong since this message shouldn't ever show.`);
         ok = false;
     }
@@ -193,6 +199,10 @@ function goCheck(match, cert, publicKey, logo, assertionConsumerService, contact
     }
     if(!assertionConsumerService){
         console.error(`No assertion consumer service found for ${match.name}.`);
+        ok = false;
+    }
+    if(!info){
+        console.error(`No info/login found for ${match.name}.`);
         ok = false;
     }
     if(!contact){
@@ -231,17 +241,19 @@ async function createJSON(json, webproxy) {
             const publicKey = cert ? cert.publicKey.export({ type: 'spki', format: 'pem' }) : '';
             const logo = await getLogo(descriptor, webproxy);
             const assertionConsumerService = getAssertionConsumerService(descriptor);
+            const info = getInfo(descriptor);
             const contacts = getContact(entity);
             const requestedAttributes = getRequestedAttributes(descriptor);
 
-            if(!goCheck(match, cert, publicKey, logo, assertionConsumerService, contacts)){
+            if(!goCheck(match, cert, publicKey, logo, assertionConsumerService, info, contacts)){
+                console.log(`No files created for ${match.name}.\n`);
                 continue;
             }
     
             const results = {
                 appl: match.name,
                 issuer: match.entityID,
-                url: "https://dummy.url:port",
+                url: info,
                 logo: logo,
                 protection_requirements: "normal",
                 users: [],               
@@ -251,7 +263,7 @@ async function createJSON(json, webproxy) {
                     allowed_user: false,
                 },
                 groups: [],
-                preferredAuthnContext: "urn:oasis:names:tc:SAML:2.0:ac: classes:unspecified",
+                preferredAuthnContext: "urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified",
                 preferredNameidFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
                 singleLogoutService: "",
                 logoutResponseUrl: "",
@@ -276,8 +288,8 @@ async function createJSON(json, webproxy) {
                     pkce: true
                 },
     
-                // reqAttr: requestedAttributes,
-                // contacts : contacts
+                reqAttr: requestedAttributes,
+                contacts : contacts
             };
             
             certStr = certStr.concat(cert.toString());
@@ -298,6 +310,7 @@ function getMetadata(){
     const spMetadataUrl = json.spMetadataUrl;
 
     const webproxy = json.webproxy.toString();
+    //createJSON(json, webproxy);
 
     const agent = new HttpsProxyAgent(webproxy);
     const req = https.get(spMetadataUrl, {agent},  (res) => {
@@ -315,3 +328,5 @@ function getMetadata(){
 }
 
 getMetadata();
+
+module.exports = {getAssertionConsumerService, getInfo, getContact,getRequestedAttributes, getLogo};
