@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "gets metadata of a few specified sp",
   "main": "getMetadata.js",
+  "type": "commonjs",
   "scripts": {
     "test": "mocha",
     "eslint": "node ./node_modules/eslint/bin/eslint.js"
@@ -20,6 +21,7 @@
   "license": "UNLICENSED",
   "dependencies": {
     "https-proxy-agent": "^7.0.6",
+    "node-forge": "^1.3.1",
     "xml-crypto": "^6.0.1",
     "xmldom": "^0.6.0"
   },

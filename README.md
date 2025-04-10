@@ -4,9 +4,9 @@ A script that fetches DFN SP Metadata XML and retrieves metadata of the SPs as p
 Creates a JSON-file (s. template.json), .crt and .pub for each SP respectively.
 
 ## Installation
-Script requires the 'https-proxy-agent', 'xmldom' and 'xml-crypto' packages
+Script requires 'https-proxy-agent', 'xmldom', 'xml-crypto' and 'node-forge'
 ```bash
-npm install https-proxy-agent xmldom xml-crypto
+npm install https-proxy-agent xmldom xml-crypto node-forge
 ```
 ## Usage
 Configure config.json (and l.217 url if needed) and run getMetadata.js.
