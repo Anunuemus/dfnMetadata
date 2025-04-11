@@ -8,6 +8,10 @@ const path = require('path');
 
 getMetadata();
 
+/**
+ * Fetches the metadata, writes it to metadata.xml and triggers processing.
+ * @throws {Error} on bad config or fetching
+ */
 function getMetadata(){
 
     let json;
@@ -43,6 +47,13 @@ function getMetadata(){
     req.end();
 }
 
+/**
+ * Creates JSON, .crt, .pub file for every SP to ./SPS respectively.
+ * Validates signature of xml content using dfn-aai.pem.
+ * Iterates over all entityDescriptors and creates files for all matches with config entries.
+ * @param {JSON} json - Content of config.json.
+ * @param {string} webproxy - For https requests.
+ */
 async function createJSON(json, webproxy) {
 
     const sp = json.sp;
@@ -141,6 +152,17 @@ async function createJSON(json, webproxy) {
     deleteFiles('SPs/', sp.map(entry => entry.name), certFileName);
 }
 
+/**
+ * Writes all files for a given sp.
+ * @param {string} dir - Directory to which files are written
+ * @param {object} match - sp matching with config entry.
+ * @param {string} jsonString - Content of sp specific json.
+ * @param {string} certStr - Certificate of sp specific .crt.
+ * @param {string} pubKeyStr - Public key of sp specific .pub.
+ * @param {string} certFileName - Name of sp specific .crt and .pub.
+ * @return on empty JSON content doing nothing
+ * @throws {Error} on directory not found, failed write or rename
+ */
 function writeFiles(dir, match, jsonString, certStr, pubKeyStr, certFileName){
 
     if(jsonString === ''){
@@ -188,6 +210,13 @@ function writeFiles(dir, match, jsonString, certStr, pubKeyStr, certFileName){
     }
 }
 
+/**
+ * Deletes all files for all sp not listed in config file.
+ * @param {string} dir - Directory from which files are deleted.
+ * @param {string} names - Names of sp specified in config file.
+ * @param {string} certFileName - Name of sp specific .crt and .pub.
+ * @throws {Error} on directory not found or failed unlink
+ */
 function deleteFiles(dir, names, certFileName){
 
     const EXTENSION = '.json';
@@ -228,6 +257,12 @@ function deleteFiles(dir, names, certFileName){
     
 }
 
+/**
+ * validates signature of xml content
+ * @param {Document} xmlDoc - XML document to validate.
+ * @param {string} xmlString - String of XML document.
+ * @throws {Error} on bad signature or XML content.
+ */
 function validateSig(xmlDoc, xmlString){
 
     const node = xmlDoc.getElementsByTagName('ds:Signature')[0];
@@ -244,10 +279,15 @@ function validateSig(xmlDoc, xmlString){
             throw new Error('Bad Signature or metadata.');
         }
     }catch (e){
-        console.log(e);
+        console.error(e);
     }
 }
 
+/**
+ * Retrieves the certificate body and creates a X509Certificate.
+ * @param {Element} descriptor - XML element to process.
+ * @return {X509Certificate|null} X509Certificate or null on invalid certificate
+ */
 function getCertificate(descriptor) {
 
     const body = descriptor.getElementsByTagName('ds:X509Certificate');
@@ -275,6 +315,13 @@ function getCertificate(descriptor) {
     return ret;
 }
 
+/**
+ * Fetches logo from url in descriptor and converts it to Base64-encoded data URI.
+ * @async
+ * @param {Element} descriptor - XML element to process.
+ * @param {string} proxy - Proxy for https request.
+ * @return {Promise<string>|''} Promise that resolves to a Base64-encoded data URI or empty string on empty logo element .
+ */
 async function getLogo(descriptor, proxy) {
 
     const logoElement = descriptor.getElementsByTagName('mdui:Logo')[0];
@@ -306,16 +353,31 @@ async function getLogo(descriptor, proxy) {
     
 }
 
+/**
+ * Gets Assertion Consumer Service of descriptor.
+ * @param {Element} descriptor - XML element to process.
+ * @return {string|null} Assertion Consumer Service of sp
+ */
 function getAssertionConsumerService(descriptor){
     const body = descriptor.getElementsByTagName('AssertionConsumerService')[0];
     return body.getAttribute("Location");
 }
 
+/**
+ * Gets Information URL of descriptor.
+ * @param {Element} descriptor - XML element to process.
+ * @return {string|''} Information URL of sp or empty string
+ */
 function getInfo(descriptor){
     const body = descriptor.getElementsByTagName('mdui:InformationURL')[0];
     return body ? body.textContent : '';
 }
 
+/**
+ * Gets contact information of sp.
+ * @param {Element} entity - XML element to process.
+ * @return {Array} Array with contact type and email
+ */
 function getContact(entity){
     const body = entity.getElementsByTagName('ContactPerson');
     return Array.from(body).map(contact => 
@@ -323,6 +385,11 @@ function getContact(entity){
     );
 }
 
+/**
+ * Gets Requested Atributes of sp.
+ * @param {Element} descriptor - XML element to process.
+ * @return {Array} Array with all FriendlyNames of Requested Attributes
+ */
 function getRequestedAttributes(descriptor){
 
     const attributes = descriptor.getElementsByTagName('RequestedAttribute');
@@ -334,6 +401,13 @@ function getRequestedAttributes(descriptor){
         attribute.getAttribute("FriendlyName")
     );
 }
+
+/**
+ * Checks if SPSSODescriptor is present.
+ * @param {Element} descriptor - XML element to process.
+ * @param {object} match - sp matching with config entry.
+ * @return {boolean} true if SPSSODescriptor is present, false otherwise
+ */
 function descriptorCheck(descriptor, match){
     if(!descriptor[0]){
         console.error(`No SPSSODescriptor found for ${match.name}.`);
@@ -343,6 +417,18 @@ function descriptorCheck(descriptor, match){
     return true;
 }
 
+/**
+ * Checks if all JSON entries are valid and usable.
+ * JSON, .crt and .pub are not written if anything is not valid or usable besides contact. 
+ * @param {object} match - sp matching with config entry.
+ * @param {X509Certificate} cert - Certificate of sp.
+ * @param {string} publicKey - Public Key of sp.
+ * @param {string} logo - Logo of sp.
+ * @param {string} assertionConsumerService - Assertion Consumer Service of sp. 
+ * @param {string} info - Information URL of sp.
+ * @param {Array} contact - Contact Information of sp.
+ * @return {boolean} True if all checks pass, false otherwise
+ */
 function goCheck(match, cert, publicKey, logo, assertionConsumerService, info, contact){
     if(!cert){
         console.error(`Invalid or no certificate found for ${match.name}.`);
